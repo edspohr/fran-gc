@@ -1,39 +1,36 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import Button from '@/components/ui/Button';
 import HairlineRule from '@/components/ui/HairlineRule';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { useAuth } from '@/hooks/useAuth';
+import { isAdminEmail } from '@/lib/admin';
 import { useSeo } from '@/lib/seo';
 
 function humanizeAuthError(err: unknown): string {
   const code = (err as { code?: string }).code ?? '';
-  if (code.includes('invalid-credential') || code.includes('wrong-password')) {
-    return 'Credenciales incorrectas.';
+  if (code.includes('popup-closed-by-user')) return 'Cerró la ventana antes de terminar.';
+  if (code.includes('popup-blocked')) {
+    return 'El navegador bloqueó la ventana emergente. Habilite popups para este sitio.';
   }
-  if (code.includes('user-not-found')) return 'Este usuario no existe.';
-  if (code.includes('too-many-requests')) return 'Demasiados intentos. Espere unos minutos.';
+  if (code.includes('network-request-failed')) return 'Sin conexión a internet.';
   return 'No se pudo iniciar sesión. Intente nuevamente.';
 }
 
 export default function Login() {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useSeo({ title: 'Ingresar · Admin FRAN GC', noindex: true });
 
-  if (!loading && user) return <Navigate to="/admin" replace />;
+  if (!loading && user && isAdminEmail(user.email)) return <Navigate to="/admin" replace />;
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleGoogle = async () => {
     setError(null);
     setSubmitting(true);
     try {
-      await signIn(email, password);
+      await signInWithGoogle();
       navigate('/admin', { replace: true });
     } catch (err) {
       setError(humanizeAuthError(err));
@@ -44,43 +41,52 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-ink px-6 py-10">
-      <div className="w-full max-w-sm bg-surface-1 border border-gold/15 rounded-lg p-8 space-y-5">
+      <div className="w-full max-w-sm bg-surface-1 border border-gold/15 rounded-lg p-8 space-y-6">
         <div className="text-center space-y-2">
           <Eyebrow>Administración</Eyebrow>
           <h1 className="font-serif text-2xl">FRAN GC · Ingreso</h1>
           <HairlineRule className="mx-auto" />
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block">
-            <span className="text-xs uppercase tracking-eyebrow text-cream-muted">Correo</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full bg-ink border border-gold/25 rounded px-3 py-2 text-cream focus:outline-none focus:border-gold/60"
-              required
-              autoComplete="email"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs uppercase tracking-eyebrow text-cream-muted">Contraseña</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full bg-ink border border-gold/25 rounded px-3 py-2 text-cream focus:outline-none focus:border-gold/60"
-              required
-              autoComplete="current-password"
-            />
-          </label>
-          {error && <p className="text-sm text-wine">{error}</p>}
-          <Button type="submit" disabled={submitting} className="w-full" size="lg">
-            {submitting ? 'Ingresando…' : 'Ingresar'}
-          </Button>
-        </form>
-        <p className="text-[0.7rem] text-center text-cream-muted">
-          El acceso está restringido al equipo de FRAN GC.
+
+        <p className="text-sm text-cream-muted text-center">
+          El acceso está restringido a las cuentas Google del equipo de FRAN GC.
         </p>
+
+        <button
+          type="button"
+          onClick={handleGoogle}
+          disabled={submitting}
+          className="w-full inline-flex items-center justify-center gap-3 bg-cream text-ink rounded-md px-4 py-3 text-sm font-medium hover:bg-cream-muted disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+        >
+          <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden="true">
+            <path
+              fill="#EA4335"
+              d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+            />
+            <path
+              fill="#4285F4"
+              d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+            />
+            <path
+              fill="#34A853"
+              d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+            />
+            <path fill="none" d="M0 0h48v48H0z" />
+          </svg>
+          {submitting ? 'Ingresando…' : 'Ingresar con Google'}
+        </button>
+
+        {error && <p className="text-sm text-wine text-center">{error}</p>}
+
+        {user && !isAdminEmail(user.email) && (
+          <p className="text-xs text-wine text-center">
+            La cuenta {user.email} no tiene permisos de administración.
+          </p>
+        )}
       </div>
     </div>
   );

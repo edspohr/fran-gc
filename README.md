@@ -40,7 +40,7 @@ Sin Firebase configurado, el sitio funciona en **modo preview**: `usePublicProdu
    - Active **plan Blaze** (necesario para Cloud Storage, uso dentro del free tier).
 
 2. **Habilitar servicios**:
-   - Authentication → Sign-in method → **Email/Password** (habilitado).
+   - Authentication → Sign-in method → **Google** (habilitado). El acceso al admin se controla por allowlist de correos en `src/lib/admin.ts` (edite ahí para agregar/quitar admins).
    - Firestore Database → Create database → Producción.
    - Storage → Get started (mantenga las reglas por defecto; se sobrescribirán al desplegar).
 
@@ -55,7 +55,7 @@ Sin Firebase configurado, el sitio funciona en **modo preview**: `usePublicProdu
      VITE_FIREBASE_APP_ID=...
      ```
 
-4. **Crear el primer administrador**: Authentication → Users → Add user (email + contraseña temporal). No hay registro público.
+4. **Definir administradores**: edite `src/lib/admin.ts` (`ADMIN_EMAILS`) para incluir los correos Google autorizados. La lista también está espejada en `firestore.rules` y `storage.rules` (mantenga las tres sincronizadas).
 
 5. **Login CLI**: `firebase login` (una sola vez).
 

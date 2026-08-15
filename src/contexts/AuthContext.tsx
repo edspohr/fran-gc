@@ -1,20 +1,24 @@
 import { createContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
+  GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   type User,
 } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, isFirebaseConfigured } from '@/lib/firebase';
 
 export interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
+
+const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: 'select_account' });
 
 interface Props {
   children: ReactNode;
@@ -22,9 +26,10 @@ interface Props {
 
 export function AuthProvider({ children }: Props) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isFirebaseConfigured);
 
   useEffect(() => {
+    if (!isFirebaseConfigured) return;
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
@@ -36,10 +41,12 @@ export function AuthProvider({ children }: Props) {
     () => ({
       user,
       loading,
-      signIn: async (email, password) => {
-        await signInWithEmailAndPassword(auth, email, password);
+      signInWithGoogle: async () => {
+        if (!isFirebaseConfigured) throw new Error('Firebase no está configurado (modo preview).');
+        await signInWithPopup(auth, provider);
       },
       signOut: async () => {
+        if (!isFirebaseConfigured) return;
         await signOut(auth);
       },
     }),
