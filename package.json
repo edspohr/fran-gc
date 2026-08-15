@@ -1,0 +1,55 @@
+{
+  "name": "frangc-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "prebuild": "tsx scripts/build-sitemap.ts",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.ts\"",
+    "sitemap": "tsx scripts/build-sitemap.ts",
+    "seed": "tsx scripts/seed.ts",
+    "seed:emu": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 tsx scripts/seed.ts",
+    "images:crop": "tsx scripts/crop-images.ts",
+    "images:upload": "tsx scripts/upload-images.ts",
+    "images:upload:emu": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 tsx scripts/upload-images.ts",
+    "og": "tsx scripts/og-generate.ts",
+    "emulate": "firebase emulators:start --only firestore,auth,storage"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "firebase": "^12.17.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "firebase-admin": "^14.2.0",
+    "postcss": "^8.4.49",
+    "prettier": "^3.4.1",
+    "sharp": "^0.35.3",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.12",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
