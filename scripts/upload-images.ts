@@ -71,13 +71,15 @@ async function main(): Promise<void> {
       },
     });
 
+    // The Firebase Storage URL is publicly readable when storage.rules
+    // allows read on the path (which ours does for products/*). Skipping
+    // makePublic() because uniform bucket-level access disables per-object ACLs.
     let imageUrl: string;
     if (usingEmulator) {
       const host = process.env.FIREBASE_STORAGE_EMULATOR_HOST;
       imageUrl = `http://${host}/v0/b/${bucketName}/o/${encodeURIComponent(dest)}?alt=media`;
     } else {
-      await bucket.file(dest).makePublic();
-      imageUrl = `https://storage.googleapis.com/${bucketName}/${dest}`;
+      imageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(dest)}?alt=media`;
     }
 
     await db.collection('products').doc(slug).set(
