@@ -3,6 +3,8 @@ import Layout from './components/layout/Layout';
 import AppRoutes from './routes';
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { ClientProfileProvider } from './contexts/ClientProfileContext';
+import OnboardingModal from './components/auth/OnboardingModal';
 
 function LayoutOrBare({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
@@ -13,11 +15,14 @@ function LayoutOrBare({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <LayoutOrBare>
-          <AppRoutes />
-        </LayoutOrBare>
-      </CartProvider>
+      <ClientProfileProvider>
+        <CartProvider>
+          <LayoutOrBare>
+            <AppRoutes />
+          </LayoutOrBare>
+          <OnboardingModal />
+        </CartProvider>
+      </ClientProfileProvider>
     </AuthProvider>
   );
 }

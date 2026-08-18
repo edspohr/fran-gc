@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import { WHATSAPP_LINK } from '@/config/site';
 import { trackWhatsAppClick } from '@/lib/analytics';
+import { useClientProfile } from '@/contexts/ClientProfileContext';
 
 const DEFAULT_MSG = encodeURIComponent(
   'Buenas, quisiera solicitar el catálogo y lista de precios mayorista de FRAN GC. Gracias.',
@@ -8,7 +9,11 @@ const DEFAULT_MSG = encodeURIComponent(
 
 export default function StickyWhatsApp() {
   const { pathname } = useLocation();
+  const { isVerified, isAdmin } = useClientProfile();
+
   if (pathname.startsWith('/admin')) return null;
+  // Hide for verified clients — they should use the internal order flow.
+  if (isVerified || isAdmin) return null;
 
   return (
     <a

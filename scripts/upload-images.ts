@@ -18,8 +18,21 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const cropsDir = resolve(__dirname, 'generated-crops');
+const repoRoot = resolve(__dirname, '..');
+
+// Load .env.production so VITE_FIREBASE_STORAGE_BUCKET is available when the
+// script is invoked without the shell export dance. Emulator invocations get
+// their overrides from process.env, which wins.
+const envFile = resolve(repoRoot, '.env.production');
+if (existsSync(envFile)) {
+  for (const line of readFileSync(envFile, 'utf8').split('\n')) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m && m[1] && !process.env[m[1]]) process.env[m[1]] = m[2];
+  }
+}
+
 const projectId = process.env.VITE_FIREBASE_PROJECT_ID ?? 'fran-gc';
-const bucketName = process.env.VITE_FIREBASE_STORAGE_BUCKET ?? `${projectId}.appspot.com`;
+const bucketName = process.env.VITE_FIREBASE_STORAGE_BUCKET ?? `${projectId}.firebasestorage.app`;
 const usingEmulator = Boolean(process.env.FIREBASE_STORAGE_EMULATOR_HOST);
 
 if (usingEmulator) {

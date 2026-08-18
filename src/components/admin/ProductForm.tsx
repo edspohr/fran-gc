@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import Button from '../ui/Button';
-import ImageUpload from './ImageUpload';
+import ImageCropTool from './ImageCropTool';
 import {
   CATEGORIES,
   TAGS,
@@ -169,7 +169,7 @@ export default function ProductForm({ initial, onSubmit, onCancel }: Props) {
 
       <div>
         <span className={labelCls}>Imagen</span>
-        <ImageUpload
+        <ImageCropTool
           slug={slug || 'nuevo'}
           currentUrl={imageUrl}
           currentPath={imagePath}

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Drawer from '../ui/Drawer';
 import Button from '../ui/Button';
 import HairlineRule from '../ui/HairlineRule';
@@ -6,6 +8,10 @@ import QuantityStepper from './QuantityStepper';
 import { useCart } from '@/hooks/useCart';
 import { buildQuoteMessage, openWhatsApp } from '@/lib/whatsapp';
 import { COMUNAS } from '@/config/site';
+import { useClientProfile } from '@/contexts/ClientProfileContext';
+import { createOrder } from '@/lib/orders';
+import { addDaysIso, todayIso } from '@/components/orders/DeliveryDatePicker';
+import type { OrderItem } from '@/types/order';
 
 interface Props {
   open: boolean;
@@ -14,6 +20,10 @@ interface Props {
 
 export default function CartDrawer({ open, onClose }: Props) {
   const { state, itemCount, updateQuantity, removeItem, setMeta, clear } = useCart();
+  const { isVerified, isPending, profile } = useClientProfile();
+  const nav = useNavigate();
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const hasItems = state.items.length > 0;
   const canSubmit =
@@ -23,6 +33,39 @@ export default function CartDrawer({ open, onClose }: Props) {
     if (!canSubmit) return;
     const msg = buildQuoteMessage(state);
     openWhatsApp(msg, 'cart-submit');
+  };
+
+  const handleImportToOrder = async () => {
+    if (!profile || !hasItems) return;
+    setImportError(null);
+    setImporting(true);
+    try {
+      const items: OrderItem[] = state.items.map((it) => ({
+        productId: it.productId,
+        slug: it.slug,
+        name: it.name,
+        presentation: it.presentation,
+        unitType: it.unitType,
+        quantity: it.quantity,
+      }));
+      const o = await createOrder({
+        client: profile,
+        items,
+        deliveryDate: new Date(addDaysIso(todayIso(), 2) + 'T00:00:00'),
+        notes: state.meta.note,
+        status: 'borrador',
+        placedBy: 'cliente',
+        placedByUid: profile.uid,
+        placedByRole: 'cliente',
+      });
+      clear();
+      onClose();
+      nav(`/mis-pedidos/${o.id}`);
+    } catch (err) {
+      setImportError((err as Error).message);
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
@@ -83,7 +126,7 @@ export default function CartDrawer({ open, onClose }: Props) {
             </ul>
           )}
 
-          {hasItems && (
+          {hasItems && !isVerified && (
             <>
               <HairlineRule />
               <div className="space-y-4">
@@ -126,17 +169,44 @@ export default function CartDrawer({ open, onClose }: Props) {
               </div>
             </>
           )}
+
+          {hasItems && isPending && (
+            <div className="text-xs text-cream-muted border border-gold/20 rounded p-3">
+              Su cuenta está en revisión. Podrá enviar este pedido internamente cuando activemos su acceso.
+              Mientras tanto puede solicitar el catálogo por WhatsApp con estos productos.
+            </div>
+          )}
         </div>
 
         {hasItems && (
           <footer className="p-6 border-t border-gold/15 bg-ink space-y-3">
-            <p className="text-xs text-cream-muted text-center">
-              {itemCount} producto{itemCount === 1 ? '' : 's'} en su cotización. La lista de precios
-              se enviará por WhatsApp.
-            </p>
-            <Button onClick={handleSubmit} disabled={!canSubmit} className="w-full" size="lg">
-              Enviar cotización por WhatsApp
-            </Button>
+            {isVerified ? (
+              <>
+                <p className="text-xs text-cream-muted text-center">
+                  Tiene sesión iniciada como {profile?.company || profile?.name}. Traspase estos productos
+                  a un pedido interno para confirmar fecha y quedar registrado.
+                </p>
+                <Button
+                  onClick={() => void handleImportToOrder()}
+                  disabled={importing}
+                  className="w-full"
+                  size="lg"
+                >
+                  {importing ? 'Creando pedido…' : 'Traspasar a pedido interno'}
+                </Button>
+                {importError && <p className="text-xs text-wine text-center">{importError}</p>}
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-cream-muted text-center">
+                  {itemCount} producto{itemCount === 1 ? '' : 's'} en su cotización. La lista de precios
+                  se enviará por WhatsApp.
+                </p>
+                <Button onClick={handleSubmit} disabled={!canSubmit} className="w-full" size="lg">
+                  Enviar cotización por WhatsApp
+                </Button>
+              </>
+            )}
             <button
               type="button"
               onClick={clear}

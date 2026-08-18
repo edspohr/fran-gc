@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import AdminSidebar from './AdminSidebar';
 
 interface Props {
   children: ReactNode;
@@ -17,12 +18,12 @@ export default function AdminShell({ children }: Props) {
             <Link to="/admin" className="font-serif text-lg text-cream">
               FRAN GC · Admin
             </Link>
-            <Link to="/" className="text-xs text-cream-muted hover:text-cream">
+            <Link to="/" className="text-xs text-cream-muted hover:text-cream hidden sm:inline">
               ← Ver sitio público
             </Link>
           </div>
           <div className="flex items-center gap-3 text-xs text-cream-muted">
-            {user?.email && <span>{user.email}</span>}
+            {user?.email && <span className="hidden sm:inline">{user.email}</span>}
             <button
               type="button"
               onClick={() => void signOut()}
@@ -33,7 +34,10 @@ export default function AdminShell({ children }: Props) {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-6 py-10">{children}</main>
+      <div className="mx-auto max-w-7xl px-6 py-6 md:py-10 flex flex-col md:flex-row gap-6 md:gap-10">
+        <AdminSidebar />
+        <main className="flex-1 min-w-0">{children}</main>
+      </div>
     </div>
   );
 }
