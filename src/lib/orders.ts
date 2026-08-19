@@ -7,8 +7,8 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
-  setDoc,
   updateDoc,
   where,
   writeBatch,
@@ -24,7 +24,6 @@ import {
   type OrderStatusEvent,
 } from '@/types/order';
 import type { Client } from '@/types/client';
-import { nextOrderId } from './orderId';
 import { notifyAdmins } from './mail';
 import { orderStatusLabel } from '@/types/order';
 
@@ -52,39 +51,49 @@ export function toClientSnapshot(c: Client): OrderClientSnapshot {
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<Order> {
-  const id = await nextOrderId();
   const now = Timestamp.now();
-  const event: OrderStatusEvent = {
-    status: input.status,
-    at: now,
-    by: input.placedByUid,
-    byRole: input.placedByRole,
-  };
-  const order: Order = {
-    id,
-    clientId: input.client.uid,
-    clientSnapshot: toClientSnapshot(input.client),
-    items: input.items,
-    deliveryDate: Timestamp.fromDate(input.deliveryDate),
-    notes: input.notes?.trim() || undefined,
-    status: input.status,
-    statusHistory: [event],
-    placedBy: input.placedBy,
-    placedByUid: input.placedByUid,
-    hasDifference: false,
-    createdAt: now,
-    updatedAt: now,
-  };
-  // Strip undefined so Firestore accepts the doc.
-  const payload: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(order)) {
-    if (v !== undefined) payload[k] = v;
-  }
-  await setDoc(doc(db, COLLECTION, id), payload);
+  const year = new Date().getFullYear();
+  const counterRef = doc(db, 'counters', `orders-${year}`);
+
+  const order = await runTransaction(db, async (tx) => {
+    const snap = await tx.get(counterRef);
+    const current = snap.exists() ? ((snap.data().next as number) ?? 1) : 1;
+    const id = `ORD-${year}-${String(current).padStart(4, '0')}`;
+    const event: OrderStatusEvent = {
+      status: input.status,
+      at: now,
+      by: input.placedByUid,
+      byRole: input.placedByRole,
+    };
+    const draft: Order = {
+      id,
+      clientId: input.client.uid,
+      clientSnapshot: toClientSnapshot(input.client),
+      items: input.items,
+      deliveryDate: Timestamp.fromDate(input.deliveryDate),
+      notes: input.notes?.trim() || undefined,
+      status: input.status,
+      statusHistory: [event],
+      placedBy: input.placedBy,
+      placedByUid: input.placedByUid,
+      hasDifference: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    // Strip undefined so Firestore accepts the doc.
+    const payload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(draft)) {
+      if (v !== undefined) payload[k] = v;
+    }
+    tx.set(counterRef, { next: current + 1 }, { merge: true });
+    const orderRef = doc(db, COLLECTION, id);
+    tx.set(orderRef, payload);
+    return draft;
+  });
 
   if (input.status === 'confirmado') {
     void notifyAdmins({
-      subject: `Nuevo pedido ${id} — ${input.client.company || input.client.name}`,
+      subject: `Nuevo pedido ${order.id} — ${input.client.company || input.client.name}`,
       html: renderNewOrderEmail(order),
     });
   }
