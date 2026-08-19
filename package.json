@@ -21,7 +21,8 @@
     "images:upload": "tsx scripts/upload-images.ts",
     "images:upload:emu": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 tsx scripts/upload-images.ts",
     "og": "tsx scripts/og-generate.ts",
-    "emulate": "firebase emulators:start --only firestore,auth,storage"
+    "emulate": "firebase emulators:start --only firestore,auth,storage",
+    "test:rules": "firebase emulators:exec --only firestore --project frangc-test 'vitest run tests/rules'"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -33,6 +34,7 @@
     "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@types/node": "^26.2.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
@@ -50,6 +52,7 @@
     "tailwindcss": "^3.4.17",
     "tsx": "^4.23.12",
     "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vitest": "^4.1.11"
   }
 }

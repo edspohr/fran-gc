@@ -1,0 +1,70 @@
+import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+import {
+  assertFails,
+  assertSucceeds,
+  type RulesTestEnvironment,
+} from '@firebase/rules-unit-testing';
+import { addDoc, collection, getDocs } from 'firebase/firestore';
+import { anonymous, makeEnv, signedIn } from './setup';
+import { ADMIN_EMAILS } from '../../src/lib/admin';
+
+let env: RulesTestEnvironment;
+
+beforeAll(async () => {
+  env = await makeEnv();
+});
+
+afterAll(async () => {
+  await env.cleanup();
+});
+
+beforeEach(async () => {
+  await env.clearFirestore();
+});
+
+describe('mail — locked to admins and self-receipts', () => {
+  it('signed-in user cannot read mail', async () => {
+    const ctx = signedIn(env, 'user-a', 'a@example.com');
+    await assertFails(getDocs(collection(ctx.firestore(), 'mail')));
+  });
+
+  it('anonymous cannot create mail', async () => {
+    const ctx = anonymous(env);
+    await assertFails(
+      addDoc(collection(ctx.firestore(), 'mail'), {
+        to: ['foo@bar.com'],
+        message: { subject: 'x', html: 'x' },
+      }),
+    );
+  });
+
+  it('signed-in user cannot create a mail doc addressed to arbitrary recipients', async () => {
+    const ctx = signedIn(env, 'user-a', 'a@example.com');
+    await assertFails(
+      addDoc(collection(ctx.firestore(), 'mail'), {
+        to: ['someone-else@example.com'],
+        message: { subject: 'x', html: 'x' },
+      }),
+    );
+  });
+
+  it('signed-in user can create a mail doc addressed to the admin list', async () => {
+    const ctx = signedIn(env, 'user-a', 'a@example.com');
+    await assertSucceeds(
+      addDoc(collection(ctx.firestore(), 'mail'), {
+        to: [...ADMIN_EMAILS],
+        message: { subject: 'Nuevo pedido', html: '<p>Hola</p>' },
+      }),
+    );
+  });
+
+  it('signed-in user can create a mail doc addressed to their own email', async () => {
+    const ctx = signedIn(env, 'user-a', 'a@example.com');
+    await assertSucceeds(
+      addDoc(collection(ctx.firestore(), 'mail'), {
+        to: ['a@example.com'],
+        message: { subject: 'Recibo', html: '<p>Su pedido</p>' },
+      }),
+    );
+  });
+});
