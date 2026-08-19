@@ -94,6 +94,10 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
   });
 
   if (input.status === 'confirmado') {
+    // Direct-confirm path: order created straight to 'confirmado' from the
+    // builder. This is the only place we send the receipt on this path — the
+    // draft→confirmado path is handled in changeOrderStatus(). Together they
+    // produce exactly one client receipt per confirmation.
     void notifyAdmins({
       subject: `Nuevo pedido ${order.id} — ${input.client.company || input.client.name}`,
       html: renderNewOrderEmail(order),
@@ -118,6 +122,59 @@ export async function updateDraftOrder(
   if (patch.deliveryDate) update.deliveryDate = Timestamp.fromDate(patch.deliveryDate);
   if (patch.notes !== undefined) update.notes = patch.notes.trim() || null;
   await updateDoc(doc(db, COLLECTION, id), update);
+}
+
+/**
+ * Confirm an existing borrador: atomically applies edits (items/date/notes) and
+ * flips status to 'confirmado' in a single update, then sends exactly one client
+ * receipt via changeOrderStatus semantics (mirrored here so we can bundle the
+ * edits into the same write). This is the counterpart to createOrder(...,'confirmado');
+ * together they guarantee one receipt per confirmation.
+ */
+export async function confirmDraftOrder(
+  id: string,
+  patch: { items: OrderItem[]; deliveryDate: Date; notes: string },
+  actor: { uid: string; role: 'cliente' | 'admin' },
+): Promise<void> {
+  const ref = doc(db, COLLECTION, id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('Pedido no existe.');
+  const current = snap.data() as Order;
+  if (current.status !== 'borrador') {
+    throw new Error('Solo un borrador se puede confirmar.');
+  }
+
+  const event: OrderStatusEvent = {
+    status: 'confirmado',
+    at: Timestamp.now(),
+    by: actor.uid,
+    byRole: actor.role,
+  };
+
+  await updateDoc(ref, {
+    items: patch.items,
+    deliveryDate: Timestamp.fromDate(patch.deliveryDate),
+    notes: patch.notes.trim() || null,
+    status: 'confirmado',
+    statusHistory: [...(current.statusHistory ?? []), event],
+    updatedAt: serverTimestamp(),
+  });
+
+  const updated: Order = {
+    ...current,
+    items: patch.items,
+    deliveryDate: Timestamp.fromDate(patch.deliveryDate),
+    notes: patch.notes.trim() || undefined,
+    status: 'confirmado',
+    statusHistory: [...(current.statusHistory ?? []), event],
+  };
+
+  void notifyAdmins({
+    subject: `Nuevo pedido ${id} — ${current.clientSnapshot.company || current.clientSnapshot.name}`,
+    html: renderNewOrderEmail(updated),
+  });
+  const receipt = renderOrderReceiptEmail(updated);
+  void notifyClient(current.clientSnapshot.email, receipt.subject, receipt.html);
 }
 
 export async function changeOrderStatus(
@@ -156,6 +213,11 @@ export async function changeOrderStatus(
   };
 
   if (to === 'confirmado') {
+    // Draft→confirmado path: user (or admin) confirms an existing borrador.
+    // The receipt sent here is the counterpart of the one in createOrder();
+    // only one of the two runs per order, so the client sees exactly one
+    // receipt per confirmation. Do NOT also send the status-change email
+    // below — 'confirmado' is intentionally excluded from that branch.
     void notifyAdmins({
       subject: `Nuevo pedido ${id} — ${current.clientSnapshot.company || current.clientSnapshot.name}`,
       html: renderNewOrderEmail(updated),

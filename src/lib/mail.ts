@@ -42,8 +42,11 @@ export async function notifyAdmins(payload: MailPayload): Promise<void> {
 export async function notifyClient(to: string, subject: string, html: string): Promise<void> {
   if (!isFirebaseConfigured) return;
   try {
+    // Firestore rule requires request.resource.data.to == [request.auth.token.email].
+    // Auth token emails are lowercase; normalize here so any caller-side casing
+    // difference never trips the rule.
     await addDoc(collection(db, 'mail'), {
-      to: [to],
+      to: [to.toLowerCase()],
       message: { subject, html },
       createdAt: serverTimestamp(),
     });

@@ -67,4 +67,31 @@ describe('mail — locked to admins and self-receipts', () => {
       }),
     );
   });
+
+  it('client receipt: address sourced from a lowercased profile email passes the rule', async () => {
+    // Simulates the runtime path: profile.email is stored .toLowerCase() by
+    // ensureClient(); the auth token email is also lowercase. notifyClient()
+    // additionally lowercases. Prove the resulting doc satisfies the rule
+    // when the caller passes the profile email verbatim (not a hardcoded
+    // literal), i.e. even if the original OAuth email had mixed case.
+    const authEmail = 'mixed.case@example.com';
+    const ctx = signedIn(env, 'user-b', authEmail);
+    const profileEmail = 'Mixed.Case@Example.com'.toLowerCase(); // as stored
+    await assertSucceeds(
+      addDoc(collection(ctx.firestore(), 'mail'), {
+        to: [profileEmail.toLowerCase()],
+        message: { subject: 'Su pedido ORD-2026-0001 quedó confirmado', html: '<p>Gracias.</p>' },
+      }),
+    );
+  });
+
+  it('client receipt with wrong-case address is rejected (guard for regression)', async () => {
+    const ctx = signedIn(env, 'user-c', 'lower@example.com');
+    await assertFails(
+      addDoc(collection(ctx.firestore(), 'mail'), {
+        to: ['LOWER@example.com'],
+        message: { subject: 'x', html: 'x' },
+      }),
+    );
+  });
 });

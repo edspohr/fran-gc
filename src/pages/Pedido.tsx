@@ -5,8 +5,13 @@ import HairlineRule from '@/components/ui/HairlineRule';
 import OrderBuilder from '@/components/orders/OrderBuilder';
 import { usePublicProducts } from '@/hooks/useProducts';
 import { useClientProfile } from '@/contexts/ClientProfileContext';
-import { createOrder, getOrder } from '@/lib/orders';
-import type { OrderItem } from '@/types/order';
+import {
+  confirmDraftOrder,
+  createOrder,
+  getOrder,
+  updateDraftOrder,
+} from '@/lib/orders';
+import type { Order, OrderItem } from '@/types/order';
 import type { Product } from '@/types/product';
 
 interface OrderPayload {
@@ -41,6 +46,14 @@ function reconcileItems(sourceItems: OrderItem[], products: Product[]): Reconcil
   return { items: kept, missingCount: sourceItems.length - kept.length };
 }
 
+function isoFromTimestampLike(ts: Order['deliveryDate']): string {
+  const d = ts.toDate();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export default function Pedido() {
   const { profile } = useClientProfile();
   const { products, loading } = usePublicProducts();
@@ -50,28 +63,27 @@ export default function Pedido() {
 
   const stateItems = (location.state as { items?: OrderItem[] } | null)?.items ?? null;
   const fromId = params.get('from');
+  const draftId = params.get('draft');
 
   const [fetchedItems, setFetchedItems] = useState<OrderItem[] | null>(null);
-  const [fetching, setFetching] = useState<boolean>(Boolean(fromId && !stateItems));
+  const [draftOrder, setDraftOrder] = useState<Order | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [fetching, setFetching] = useState<boolean>(
+    Boolean((fromId && !stateItems) || draftId),
+  );
   const [noticeDismissed, setNoticeDismissed] = useState(false);
 
+  // Load ?from=... (repetir pedido) source items.
   useEffect(() => {
     let cancelled = false;
-    // Only fetch by ?from when state.items isn't already provided.
-    if (!fromId || stateItems || !profile) {
-      setFetching(false);
+    if (!fromId || stateItems || !profile || draftId) {
       return;
     }
     setFetching(true);
     getOrder(fromId)
       .then((o) => {
         if (cancelled) return;
-        if (!o) {
-          setFetchedItems([]);
-          return;
-        }
-        // Silently ignore if this order isn't the current user's.
-        if (o.clientId !== profile.uid) {
+        if (!o || o.clientId !== profile.uid) {
           setFetchedItems([]);
           return;
         }
@@ -86,9 +98,41 @@ export default function Pedido() {
     return () => {
       cancelled = true;
     };
-  }, [fromId, stateItems, profile]);
+  }, [fromId, stateItems, profile, draftId]);
 
-  const sourceItems: OrderItem[] | null = stateItems ?? fetchedItems;
+  // Load ?draft=... source order for editing.
+  useEffect(() => {
+    let cancelled = false;
+    if (!draftId || !profile) return;
+    setFetching(true);
+    setDraftError(null);
+    getOrder(draftId)
+      .then((o) => {
+        if (cancelled) return;
+        if (!o || o.clientId !== profile.uid || o.status !== 'borrador') {
+          setDraftError('No encontramos ese borrador.');
+          setDraftOrder(null);
+          return;
+        }
+        setDraftOrder(o);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDraftError('No encontramos ese borrador.');
+          setDraftOrder(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFetching(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [draftId, profile]);
+
+  const isEditing = Boolean(draftOrder);
+  const sourceItems: OrderItem[] | null =
+    (isEditing ? draftOrder?.items ?? null : null) ?? stateItems ?? fetchedItems;
 
   const reconciled = useMemo<Reconciled | null>(() => {
     if (!sourceItems || loading) return null;
@@ -97,7 +141,7 @@ export default function Pedido() {
 
   if (!profile) return null;
 
-  const submitDraft = async (data: OrderPayload) => {
+  const submitDraftNew = async (data: OrderPayload) => {
     const o = await createOrder({
       client: profile,
       items: data.items,
@@ -111,7 +155,7 @@ export default function Pedido() {
     nav(`/mis-pedidos/${o.id}`);
   };
 
-  const submitConfirm = async (data: OrderPayload) => {
+  const submitConfirmNew = async (data: OrderPayload) => {
     const o = await createOrder({
       client: profile,
       items: data.items,
@@ -125,22 +169,57 @@ export default function Pedido() {
     nav(`/mis-pedidos/${o.id}`);
   };
 
+  const submitDraftEdit = async (data: OrderPayload) => {
+    if (!draftOrder) return;
+    await updateDraftOrder(draftOrder.id, {
+      items: data.items,
+      deliveryDate: data.deliveryDate,
+      notes: data.notes,
+    });
+    nav(`/mis-pedidos/${draftOrder.id}`);
+  };
+
+  const submitConfirmEdit = async (data: OrderPayload) => {
+    if (!draftOrder) return;
+    await confirmDraftOrder(
+      draftOrder.id,
+      { items: data.items, deliveryDate: data.deliveryDate, notes: data.notes },
+      { uid: profile.uid, role: 'cliente' },
+    );
+    nav(`/mis-pedidos/${draftOrder.id}`);
+  };
+
   const showLoading = loading || fetching;
   const initialItems = reconciled?.items ?? [];
   const missingCount = reconciled?.missingCount ?? 0;
+
+  const initialDate = draftOrder ? isoFromTimestampLike(draftOrder.deliveryDate) : undefined;
+  const initialNotes = draftOrder?.notes ?? '';
+
+  const clientLabel = isEditing && draftOrder
+    ? `Editando borrador ${draftOrder.id}`
+    : 'Su pedido';
 
   return (
     <section className="py-10">
       <div className="mx-auto max-w-7xl px-6 space-y-6">
         <div>
-          <Eyebrow>Nuevo pedido</Eyebrow>
-          <h1 className="font-serif text-3xl md:text-4xl mt-1">Arme su pedido mayorista</h1>
+          <Eyebrow>{isEditing ? 'Editar borrador' : 'Nuevo pedido'}</Eyebrow>
+          <h1 className="font-serif text-3xl md:text-4xl mt-1">
+            {isEditing ? 'Edite su borrador' : 'Arme su pedido mayorista'}
+          </h1>
           <HairlineRule />
           <p className="text-sm text-cream-muted mt-3 max-w-2xl">
             Seleccione productos y cantidades, elija fecha de entrega y confirme.
             Coordinaremos disponibilidad y precios por WhatsApp si hay alguna variación.
           </p>
         </div>
+
+        {draftError && (
+          <div className="bg-surface-1 border border-wine/40 rounded p-3 text-sm text-cream">
+            {draftError}
+          </div>
+        )}
 
         {missingCount > 0 && !noticeDismissed && (
           <div className="bg-surface-1 border border-gold/25 rounded p-3 text-sm text-cream-muted flex items-start justify-between gap-3">
@@ -163,13 +242,16 @@ export default function Pedido() {
           <div className="h-6 w-6 border-2 border-gold/40 border-t-gold rounded-full animate-spin" />
         ) : (
           <OrderBuilder
+            key={draftOrder?.id ?? 'new'}
             products={products}
-            clientLabel="Su pedido"
+            clientLabel={clientLabel}
             submitLabel="Confirmar pedido"
-            submitDraftLabel="Guardar como borrador"
-            onSubmit={submitConfirm}
-            onSubmitDraft={submitDraft}
+            submitDraftLabel={isEditing ? 'Guardar borrador' : 'Guardar como borrador'}
+            onSubmit={isEditing ? submitConfirmEdit : submitConfirmNew}
+            onSubmitDraft={isEditing ? submitDraftEdit : submitDraftNew}
             initialItems={initialItems}
+            initialDate={initialDate}
+            initialNotes={initialNotes}
           />
         )}
       </div>
