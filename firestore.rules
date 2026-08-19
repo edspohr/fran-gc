@@ -73,7 +73,14 @@ service cloud.firestore {
     }
 
     match /mail/{docId} {
-      allow read, create: if isAdmin() || isSignedIn();
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        || (isSignedIn() && (
+             request.resource.data.to.hasOnly([
+               'francisca@spohr.cl','edmundo@spohr.cl','edmundo@growthbuddies.cl'
+             ])
+             || request.resource.data.to == [request.auth.token.email]
+           ));
     }
 
     match /{document=**} {
