@@ -63,7 +63,10 @@ service cloud.firestore {
 
       allow update: if isAdmin() || (isSignedIn()
         && resource.data.clientId == request.auth.uid
-        && resource.data.status == 'borrador');
+        && resource.data.status == 'borrador'
+        && request.resource.data.status in ['borrador','confirmado']
+        && request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['items','deliveryDate','notes','status','statusHistory','updatedAt']));
 
       allow delete: if isAdmin();
     }
