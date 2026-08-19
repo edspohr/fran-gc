@@ -13,6 +13,8 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Client, ClientProfileFields, ClientStatus } from '@/types/client';
+import { notifyClient } from './mail';
+import { renderActivatedEmail } from './emails/activated';
 
 const COLLECTION = 'clients';
 
@@ -71,8 +73,15 @@ export async function adminUpdateClient(
   await updateDoc(doc(db, COLLECTION, uid), patch);
 }
 
-export function approveClient(uid: string): Promise<void> {
-  return adminUpdateClient(uid, { status: 'activo' });
+export async function approveClient(client: Client): Promise<void> {
+  await adminUpdateClient(client.uid, { status: 'activo' });
+  if (client.email) {
+    const { subject, html } = renderActivatedEmail({
+      name: client.name,
+      company: client.company,
+    });
+    void notifyClient(client.email, subject, html);
+  }
 }
 
 export function suspendClient(uid: string): Promise<void> {

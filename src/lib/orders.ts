@@ -24,8 +24,10 @@ import {
   type OrderStatusEvent,
 } from '@/types/order';
 import type { Client } from '@/types/client';
-import { notifyAdmins } from './mail';
+import { notifyAdmins, notifyClient } from './mail';
 import { orderStatusLabel } from '@/types/order';
+import { renderOrderReceiptEmail } from './emails/orderReceipt';
+import { renderStatusChangeEmail } from './emails/statusChange';
 
 const COLLECTION = 'orders';
 
@@ -96,6 +98,8 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       subject: `Nuevo pedido ${order.id} — ${input.client.company || input.client.name}`,
       html: renderNewOrderEmail(order),
     });
+    const receipt = renderOrderReceiptEmail(order);
+    void notifyClient(input.client.email, receipt.subject, receipt.html);
   }
 
   return order;
@@ -145,11 +149,22 @@ export async function changeOrderStatus(
 
   await updateDoc(ref, update);
 
+  const updated: Order = {
+    ...current,
+    status: to,
+    hasDifference: opts.hasDifference ?? current.hasDifference,
+  };
+
   if (to === 'confirmado') {
     void notifyAdmins({
       subject: `Nuevo pedido ${id} — ${current.clientSnapshot.company || current.clientSnapshot.name}`,
-      html: renderNewOrderEmail({ ...current, status: to }),
+      html: renderNewOrderEmail(updated),
     });
+    const receipt = renderOrderReceiptEmail(updated);
+    void notifyClient(current.clientSnapshot.email, receipt.subject, receipt.html);
+  } else if (to === 'en-preparacion' || to === 'entregado') {
+    const msg = renderStatusChangeEmail(updated, to);
+    void notifyClient(current.clientSnapshot.email, msg.subject, msg.html);
   }
 }
 

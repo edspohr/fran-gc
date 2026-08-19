@@ -33,3 +33,22 @@ export async function notifyAdmins(payload: MailPayload): Promise<void> {
     console.warn('[mail] notifyAdmins failed:', err);
   }
 }
+
+/**
+ * Queue an email to a single client recipient. Uses the same Firestore-based
+ * Trigger Email extension as `notifyAdmins`. Failures are logged but never
+ * thrown — the user action must succeed even if the notification queue does not.
+ */
+export async function notifyClient(to: string, subject: string, html: string): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  try {
+    await addDoc(collection(db, 'mail'), {
+      to: [to],
+      message: { subject, html },
+      createdAt: serverTimestamp(),
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[mail] notifyClient failed:', err);
+  }
+}

@@ -33,7 +33,7 @@ export default function AdminClientes() {
   const doApprove = async (c: Client) => {
     setBusy(c.uid);
     try {
-      await approveClient(c.uid);
+      await approveClient(c);
     } finally {
       setBusy(null);
     }
