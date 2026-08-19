@@ -21,10 +21,10 @@ export default function QuantityStepper({ quantity, unitType, onChange }: Props)
     if (isValidQuantity(n, unitType)) onChange(n);
   };
 
-  const btn = 'w-8 h-8 flex items-center justify-center border border-gold/30 rounded text-cream-muted hover:text-cream hover:border-gold/70';
+  const btn = 'w-11 h-11 flex items-center justify-center border border-gold/30 rounded text-cream-muted hover:text-cream hover:border-gold/70';
 
   return (
-    <div className="inline-flex items-center gap-1">
+    <div className="inline-flex items-center gap-2">
       <button type="button" aria-label="Disminuir" className={btn} onClick={dec}>
         −
       </button>

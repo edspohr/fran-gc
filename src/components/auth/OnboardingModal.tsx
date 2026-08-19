@@ -80,37 +80,80 @@ export default function OnboardingModal() {
           <div className="grid md:grid-cols-2 gap-4">
             <label className="block">
               <span className={labelCls}>Nombre y apellido *</span>
-              <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} required autoFocus />
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={inputCls}
+                required
+                autoFocus
+                autoComplete="name"
+                aria-describedby="onboarding-error"
+              />
             </label>
             <label className="block">
               <span className={labelCls}>Empresa *</span>
-              <input value={company} onChange={(e) => setCompany(e.target.value)} className={inputCls} required />
+              <input
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                className={inputCls}
+                required
+                autoComplete="organization"
+                aria-describedby="onboarding-error"
+              />
             </label>
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
             <label className="block">
               <span className={labelCls}>Comuna *</span>
-              <input value={comuna} onChange={(e) => setComuna(e.target.value)} className={inputCls} required />
+              <input
+                value={comuna}
+                onChange={(e) => setComuna(e.target.value)}
+                className={inputCls}
+                required
+                autoComplete="address-level2"
+                aria-describedby="onboarding-error"
+              />
             </label>
             <label className="block">
               <span className={labelCls}>Teléfono *</span>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} placeholder="+56 9 ..." required />
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className={inputCls}
+                placeholder="+56 9 ..."
+                required
+                autoComplete="tel"
+                inputMode="tel"
+                aria-describedby="onboarding-error"
+              />
             </label>
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
             <label className="block">
               <span className={labelCls}>RUT empresa (opcional)</span>
-              <input value={rut} onChange={(e) => setRut(e.target.value)} className={inputCls} placeholder="76.123.456-7" />
+              <input
+                value={rut}
+                onChange={(e) => setRut(e.target.value)}
+                className={inputCls}
+                placeholder="76.123.456-7"
+                aria-describedby="onboarding-error"
+              />
             </label>
             <label className="block">
               <span className={labelCls}>Dirección de despacho (opcional)</span>
-              <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls} />
+              <input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className={inputCls}
+                autoComplete="street-address"
+                aria-describedby="onboarding-error"
+              />
             </label>
           </div>
 
-          {error && <p className="text-sm text-wine">{error}</p>}
+          {error && <p id="onboarding-error" className="text-sm text-wine">{error}</p>}
 
           <div className="pt-2">
             <Button type="submit" disabled={submitting}>
