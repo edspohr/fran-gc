@@ -4,10 +4,11 @@ interface DrawerProps {
   open: boolean;
   onClose: () => void;
   labelledBy?: string;
+  side?: 'right' | 'bottom';
   children: ReactNode;
 }
 
-export default function Drawer({ open, onClose, labelledBy, children }: DrawerProps) {
+export default function Drawer({ open, onClose, labelledBy, side = 'right', children }: DrawerProps) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -22,6 +23,11 @@ export default function Drawer({ open, onClose, labelledBy, children }: DrawerPr
     };
   }, [open, onClose]);
 
+  const panelCls =
+    side === 'bottom'
+      ? `absolute bottom-0 left-0 right-0 max-h-[85vh] bg-surface-1 border-t border-gold/20 rounded-t-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] overflow-y-auto transform transition-transform duration-300 ${open ? 'translate-y-0' : 'translate-y-full'}`
+      : `absolute right-0 top-0 h-full w-full sm:w-[440px] bg-surface-1 border-l border-gold/20 shadow-2xl transform transition-transform duration-300 ${open ? 'translate-x-0' : 'translate-x-full'}`;
+
   return (
     <div
       aria-hidden={!open}
@@ -32,7 +38,7 @@ export default function Drawer({ open, onClose, labelledBy, children }: DrawerPr
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
-        className={`absolute right-0 top-0 h-full w-full sm:w-[440px] bg-surface-1 border-l border-gold/20 shadow-2xl transform transition-transform duration-300 ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        className={panelCls}
       >
         {children}
       </aside>
