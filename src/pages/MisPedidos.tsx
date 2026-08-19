@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HairlineRule from '@/components/ui/HairlineRule';
 import Button from '@/components/ui/Button';
@@ -10,6 +10,7 @@ import { countItems, type Order } from '@/types/order';
 
 export default function MisPedidos() {
   const { profile, isVerified } = useClientProfile();
+  const nav = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,6 +24,10 @@ export default function MisPedidos() {
   }, [profile]);
 
   if (!profile) return null;
+
+  const repeat = (o: Order) => {
+    nav('/pedido', { state: { items: o.items, sourceOrderId: o.id } });
+  };
 
   return (
     <section className="py-14">
@@ -47,11 +52,8 @@ export default function MisPedidos() {
         ) : (
           <ul className="divide-y divide-gold/10 border-y border-gold/10">
             {orders.map((o) => (
-              <li key={o.id}>
-                <Link
-                  to={`/mis-pedidos/${o.id}`}
-                  className="py-4 flex items-center justify-between gap-3 hover:bg-surface-1 -mx-4 px-4"
-                >
+              <li key={o.id} className="py-4 flex items-center justify-between gap-3 -mx-4 px-4 hover:bg-surface-1">
+                <Link to={`/mis-pedidos/${o.id}`} className="flex-1 min-w-0 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-cream font-medium">{o.id}</p>
                     <p className="text-xs text-cream-muted">
@@ -60,6 +62,15 @@ export default function MisPedidos() {
                   </div>
                   <OrderStatusBadge status={o.status} hasDifference={o.hasDifference} />
                 </Link>
+                {isVerified && (
+                  <button
+                    type="button"
+                    onClick={() => repeat(o)}
+                    className="px-2.5 py-1 text-xs uppercase tracking-eyebrow border border-gold/40 rounded text-cream hover:border-gold/70 shrink-0"
+                  >
+                    Repetir
+                  </button>
+                )}
               </li>
             ))}
           </ul>

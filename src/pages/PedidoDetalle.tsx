@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HairlineRule from '@/components/ui/HairlineRule';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
@@ -12,6 +12,7 @@ import { countItems, type Order } from '@/types/order';
 export default function PedidoDetalle() {
   const { orderId } = useParams();
   const { profile } = useClientProfile();
+  const nav = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
@@ -100,16 +101,25 @@ export default function PedidoDetalle() {
           )}
         </div>
 
-        {order.status === 'borrador' && (
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={() => void confirm()} disabled={confirming}>
-              {confirming ? 'Confirmando…' : 'Confirmar este pedido'}
-            </Button>
-            <Button as="a" href={`/pedido?draft=${order.id}`} variant="ghost">
-              Editar borrador
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {order.status === 'borrador' && (
+            <>
+              <Button type="button" onClick={() => void confirm()} disabled={confirming}>
+                {confirming ? 'Confirmando…' : 'Confirmar este pedido'}
+              </Button>
+              <Button as="a" href={`/pedido?draft=${order.id}`} variant="ghost">
+                Editar borrador
+              </Button>
+            </>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => nav('/pedido', { state: { items: order.items, sourceOrderId: order.id } })}
+          >
+            Repetir pedido
+          </Button>
+        </div>
 
         <Link to="/mis-pedidos" className="text-sm text-gold hover:text-gold-hover">
           ← Volver a mis pedidos
