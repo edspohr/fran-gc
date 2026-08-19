@@ -7,7 +7,7 @@ import Eyebrow from '../ui/Eyebrow';
 import QuantityStepper from './QuantityStepper';
 import { useCart } from '@/hooks/useCart';
 import { buildQuoteMessage, openWhatsApp } from '@/lib/whatsapp';
-import { COMUNAS } from '@/config/site';
+import { COMUNAS, WHATSAPP_LINK } from '@/config/site';
 import { useClientProfile } from '@/contexts/ClientProfileContext';
 import { createOrder } from '@/lib/orders';
 import { addDaysIso, todayIso } from '@/components/orders/DeliveryDatePicker';
@@ -171,9 +171,23 @@ export default function CartDrawer({ open, onClose }: Props) {
           )}
 
           {hasItems && isPending && (
-            <div className="text-xs text-cream-muted border border-gold/20 rounded p-3">
-              Su cuenta está en revisión. Podrá enviar este pedido internamente cuando activemos su acceso.
-              Mientras tanto puede solicitar el catálogo por WhatsApp con estos productos.
+            <div className="text-sm text-cream-muted border border-gold/25 bg-surface-1 rounded p-4 space-y-3">
+              <p>
+                Estamos revisando su cuenta. Le avisaremos por correo apenas esté activa
+                (normalmente en menos de 24 horas hábiles). ¿Necesita algo antes? Escríbanos
+                por WhatsApp.
+              </p>
+              <p>
+                Cuando su cuenta esté activa podrá traspasar este carro a un pedido con un clic.
+              </p>
+              <a
+                href={WHATSAPP_LINK}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] text-xs uppercase tracking-eyebrow border border-gold/50 rounded text-cream hover:border-gold/80"
+              >
+                Escribir por WhatsApp
+              </a>
             </div>
           )}
         </div>

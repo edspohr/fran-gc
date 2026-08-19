@@ -7,6 +7,7 @@ import { useClientProfile } from '@/contexts/ClientProfileContext';
 import { clientStatusLabel } from '@/types/client';
 import { updateClientProfile } from '@/lib/clients';
 import { useAuth } from '@/hooks/useAuth';
+import { WHATSAPP_LINK } from '@/config/site';
 
 export default function MiCuenta() {
   const { profile, isAdmin, isPending, isVerified, loading } = useClientProfile();
@@ -133,9 +134,20 @@ export default function MiCuenta() {
         </div>
 
         {isPending && (
-          <div className="border border-gold/25 bg-surface-1 rounded p-4 text-sm text-cream-muted">
-            Su cuenta está en revisión. Podrá hacer pedidos apenas nuestro equipo la active.
-            Mientras tanto puede actualizar sus datos o navegar el catálogo.
+          <div className="border border-gold/25 bg-surface-1 rounded p-4 text-sm text-cream-muted space-y-3">
+            <p>
+              Estamos revisando su cuenta. Le avisaremos por correo apenas esté activa
+              (normalmente en menos de 24 horas hábiles). ¿Necesita algo antes? Escríbanos
+              por WhatsApp.
+            </p>
+            <a
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] text-xs uppercase tracking-eyebrow border border-gold/50 rounded text-cream hover:border-gold/80"
+            >
+              Escribir por WhatsApp
+            </a>
           </div>
         )}
 
